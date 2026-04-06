@@ -1,4 +1,4 @@
-# StreamlitApp_Week_11.py — AMZN Return Predictor
+# StreamlitApp — AMZN Return Predictor
 
 import streamlit as st
 import numpy as np
