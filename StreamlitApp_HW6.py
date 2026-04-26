@@ -14,7 +14,6 @@ import sagemaker
 from sagemaker.base_predictor import Predictor
 from sagemaker.serializers import CSVSerializer, NumpySerializer
 from sagemaker.deserializers import JSONDeserializer, NumpyDeserializer
-from sagemaker.deserializers import NumpyDeserializer
 
 from sklearn.pipeline import Pipeline
 import shap
