@@ -51,12 +51,25 @@ sm_session = sagemaker.Session(boto_session=session)
 
 df_features = extract_features()
 
+FEATURE_KEYS = ['sentiment_lex', 'sentiment_LSTM',
+                'sentiment_lex_lag1', 'sentiment_LSTM_lag1',
+                'ADBE', 'GOOG', 'JPM', 'MSFT']
+
 MODEL_INFO = {
-        "endpoint": aws_endpoint,
-        "explainer": 'explainer_sentiment.shap',
-        "pipeline": 'finalized_sentiment_model.tar.gz',
-        "keys": ['ADBE','MSFT','JPM','sentiment_textblob'],
-        "inputs": [{"name": k, "type": "number", "min": -1.0, "max": 1.0, "default": 0.0, "step": 0.01} for k in ['ADBE','MSFT','JPM','sentiment_textblob']]
+    "endpoint": aws_endpoint,
+    "explainer": 'explainer_sentiment.shap',
+    "pipeline": 'finalized_sentiment_model.tar.gz',
+    "keys": FEATURE_KEYS,
+    "inputs": [
+        {"name": "sentiment_lex",       "min": -1.0, "max": 1.0, "default": 0.0, "step": 0.01},
+        {"name": "sentiment_LSTM",      "min":  0.0, "max": 1.0, "default": 0.0, "step": 1.0},
+        {"name": "sentiment_lex_lag1",  "min": -1.0, "max": 1.0, "default": 0.0, "step": 0.01},
+        {"name": "sentiment_LSTM_lag1", "min":  0.0, "max": 1.0, "default": 0.0, "step": 1.0},
+        {"name": "ADBE", "min": -0.2, "max": 0.2, "default": 0.0, "step": 0.001},
+        {"name": "GOOG", "min": -0.2, "max": 0.2, "default": 0.0, "step": 0.001},
+        {"name": "JPM",  "min": -0.2, "max": 0.2, "default": 0.0, "step": 0.001},
+        {"name": "MSFT", "min": -0.2, "max": 0.2, "default": 0.0, "step": 0.001},
+    ]
 }
 
 def load_pipeline(_session, bucket, key):
@@ -86,9 +99,9 @@ def call_model_api(input_df):
         deserializer=NumpyDeserializer()
     )
     try:
-        raw_pred = predictor.predict(input_df)
-        pred_val = pd.DataFrame(raw_pred).values[-1][0]
-        return round(float(pred_val), 4), 200
+        raw_pred = predictor.predict(input_df.values)
+        pred_val = float(np.array(raw_pred).flatten()[0])
+        return round(pred_val, 4), 200
     except Exception as e:
         return f"Error: {str(e)}", 500
 
@@ -131,7 +144,7 @@ with st.form("pred_form"):
                 inp['name'].replace('_', ' ').upper(),
                 min_value=inp['min'],
                 max_value=inp['max'],
-                value=inp['default'],
+                value=float(inp['default']),
                 step=inp['step']
             )
 
@@ -143,7 +156,9 @@ if submitted:
 
     res, status = call_model_api(input_df)
     if status == 200:
-        st.metric("Predicted Return", f"{res * 100:.4f}%")
+        color = "green" if res > 0 else "red"
+        arrow = "▲" if res > 0 else "▼"
+        st.metric("Predicted AAPL Return", f"{arrow} {res * 100:.4f}%")
         display_explanation(input_df, session, aws_bucket)
     else:
         st.error(res)
