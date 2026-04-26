@@ -10,3 +10,4 @@ joblib
 imbalanced-learn
 scipy==1.15.1
 statsmodels
+sagemaker==2.232.2
